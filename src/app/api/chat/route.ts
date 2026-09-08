@@ -22,8 +22,18 @@ export async function POST(req: Request) {
         }
 
         const ai = await getAIProvider();
-        const content = await ai.generateReply(messages);
-        return NextResponse.json({ content })
+        //for json - one time response
+        // const content = await ai.generateReply(messages);
+        // return NextResponse.json({ content })
+
+        //for stream
+        const stream = await ai.generateReplyStream(messages)
+        return new Response(stream, {
+            headers: {
+                "Content-Type": "text/plain",
+                "Cache-Control": "no-cache",
+            }
+        });
     } catch (error) {
         console.error("[api/chat]", error);
         return NextResponse.json(

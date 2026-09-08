@@ -14,7 +14,7 @@ export function useChat() {
         const text = input.trim();
         if (!text || loading) return;
 
-        const userMessage: ChatMessage = { role: "user", content: text }
+        const userMessage: ChatMessage = { role: "user", content: text, id: crypto.randomUUID() }
 
         const nextMessages = [...messages, userMessage];
 
@@ -22,22 +22,56 @@ export function useChat() {
         setMessages(nextMessages)
         setError(null)
         setLoading(true)
+
+        const assistantId: string = crypto.randomUUID()
+
+
         try {
             const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ messages: nextMessages })
             })
-            const data = await res.json();
+            // const data = await res.json();
+            const reader = res.body?.getReader();
             if (!res.ok) throw new Error(data.error || "Request Failed")
 
-            setMessages((prev) => [
+            const decoder = new TextDecoder();
+            setMessages(prev => [
                 ...prev,
                 {
+                    id: assistantId,
                     role: "assistant",
-                    content: data.content
+                    content: ""
                 }
-            ])
+            ]);
+            let fullResponse: string = ''
+
+            while (true) {
+
+                const { done, value } =
+                    await reader.read();
+
+                if (done) break;
+                const chunk = decoder.decode(value);
+                fullResponse +=
+                    chunk
+
+                console.log({ fullResponse });
+
+                setMessages(prev =>
+                    prev.map(msg =>
+                        msg.id === assistantId
+                            ? {
+                                ...msg,
+                                content: fullResponse
+                            }
+                            : msg
+                    )
+                );
+            }
+
+
         } catch (error) {
             setError(error instanceof Error ? error.message : "Something went wrong")
         } finally {

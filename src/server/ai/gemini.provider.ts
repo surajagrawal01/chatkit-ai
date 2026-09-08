@@ -73,4 +73,55 @@ export class GeminiProvider implements AIProvider {
             throw error;
         }
     }
+
+
+    async generateReplyStream(messages: ChatMessage[], options?: { systemPrompt?: string; }): Promise<ReadableStream> {
+        try {
+            if (messages.length === 0) {
+                throw new Error(
+                    "At least one message is required"
+                );
+            }
+
+            const geminiStream = await this.client.models.generateContentStream({
+                model: this.model,
+                contents: this.mapMessages(messages),
+                config: {
+                    systemInstruction:
+                        options?.systemPrompt
+                        ?? SYSTEM_PROMPT,
+
+                    temperature:
+                        0.7,
+
+                    maxOutputTokens:
+                        1024
+                },
+            })
+            const encoder = new TextEncoder();
+
+
+            return new ReadableStream({
+                async start(controller) {
+                    for await (const chunk of geminiStream) {
+
+                        controller.enqueue(
+                            encoder.encode(
+                                chunk.text ?? ""
+                            )
+                        );
+                    }
+
+                    controller.close();
+                }
+            })
+        } catch (error) {
+            console.error(
+                "[GeminiProvider]",
+                error
+            );
+
+            throw error;
+        }
+    }
 }
