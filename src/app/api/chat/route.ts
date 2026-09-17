@@ -26,8 +26,10 @@ export async function POST(req: Request) {
         // const content = await ai.generateReply(messages);
         // return NextResponse.json({ content })
 
-        //for stream
-        const stream = await ai.generateReplyStream(messages)
+        // `req.signal` is the Web-standard AbortSignal for this request. the moment the client disconnects 
+        // — Stop button clicked, tab/browser closed, or the network connection just drops. We hand it straight to 
+        // the provider so it can cancel the upstream Gemini call instead of letting it run to completion for nobody.
+        const stream = await ai.generateReplyStream(messages, { signal: req.signal });
         return new Response(stream, {
             headers: {
                 "Content-Type": "text/plain",
@@ -35,6 +37,11 @@ export async function POST(req: Request) {
             }
         });
     } catch (error) {
+        if (req.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+            // it isn't a failure, it's an intentional cancel.
+            return new Response(null, { status: 499 });
+        }
+
         console.error("[api/chat]", error);
         return NextResponse.json(
             { error: "Failed to generate reply" },
