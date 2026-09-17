@@ -1,9 +1,12 @@
 export type ChatRole = "user" | "assistant" | "system";
 
+export type ChatMessageStatus = "streaming" | "done" | "stopped" | "error";
+
 export interface ChatMessage {
     id: string;
     role: ChatRole;
     content: string;
+    status?: ChatMessageStatus;
 }
 
 export interface AIProvider {

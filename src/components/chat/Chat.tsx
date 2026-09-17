@@ -12,6 +12,7 @@ export function Chat() {
         loading,
         error,
         sendMessage,
+        stopGeneration,
     } = useChat();
 
     return (
@@ -43,7 +44,8 @@ export function Chat() {
                 value={input}
                 onChange={setInput}
                 onSend={sendMessage}
-                disabled={loading}
+                onStop={stopGeneration}
+                loading={loading}
             />
         </div>
     );

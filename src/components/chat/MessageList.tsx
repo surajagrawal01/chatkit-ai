@@ -29,7 +29,7 @@ export function MessageList({
                     return (
                         <div
                             key={index}
-                            className={`flex ${isUser ? "justify-end" : "justify-start"
+                            className={`flex flex-col ${isUser ? "items-end" : "items-start"
                                 }`}
                         >
                             <div
@@ -42,6 +42,13 @@ export function MessageList({
                                     ? message.content
                                     : "No Answer"}
                             </div>
+
+                            {message.status === "stopped" && (
+                                <span className="mt-1 text-xs text-zinc-500">Stopped</span>
+                            )}
+                            {message.status === "error" && (
+                                <span className="mt-1 text-xs text-red-400">Failed to finish</span>
+                            )}
                         </div>
                     );
                 })}
