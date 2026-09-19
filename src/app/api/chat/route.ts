@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAIProvider } from "@/server/ai/provider";
 import type { ChatMessage } from "@/server/ai/types";
+import { getClientIdentifier } from "@/lib/rate-limit/identifier";
+import { rateLimiter } from "@/lib/rate-limit/rate-limiter";
 
 export async function POST(req: Request) {
     try {
@@ -18,6 +20,38 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 { error: "Too many messages" },
                 { status: 400 }
+            );
+        }
+
+
+        // 1. Identify client
+        const identifier = getClientIdentifier(req);
+
+        // 2. Check rate limit
+        const result = await rateLimiter.limit(identifier);
+
+        // Provide a safe fallback timestamp (e.g., 60 seconds from now) if resetAt is missing
+        const resetTime = result?.resetAt ? new Date(result.resetAt) : new Date(Date.now() + 60000);
+
+        // Format the date object into a clean "12-hour AM/PM" format
+        const localizedTime = resetTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        // 3. Reject if limit exceeded
+        if (!result.allowed) {
+            return NextResponse.json(
+                {
+                    error: `Too many requests, try after ${localizedTime}`,
+                    retryAfter: Math.ceil(
+                        (result?.resetAt - Date.now()) / 1000
+                    ),
+                },
+                {
+                    status: 429,
+                }
             );
         }
 
