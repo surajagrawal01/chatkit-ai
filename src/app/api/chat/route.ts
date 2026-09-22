@@ -17,7 +17,7 @@ export async function GET() {
         const chats = await listChats();
 
         return NextResponse.json(
-            chats.map(chat => ({
+            chats.map((chat: Awaited<ReturnType<typeof listChats>>[number]) => ({
                 id: chat.id,
                 title: chat.title,
                 createdAt: chat.createdAt,

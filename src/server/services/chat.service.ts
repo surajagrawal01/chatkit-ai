@@ -10,7 +10,19 @@ export interface PersistedChat {
     deletedAt: Date | null;
 }
 
-export async function listChats() {
+export interface PersistedMessage {
+    id: string;
+    chatId: string;
+    role: string;
+    content: string;
+    createdAt: Date;
+}
+
+export interface PersistedChatWithMessages extends PersistedChat {
+    messages: PersistedMessage[];
+}
+
+export async function listChats(): Promise<PersistedChatWithMessages[]> {
     return prisma.chat.findMany({
         where: { deletedAt: null },
         orderBy: { updatedAt: "desc" },
@@ -22,7 +34,7 @@ export async function listChats() {
     });
 }
 
-export async function getChatById(chatId: string) {
+export async function getChatById(chatId: string): Promise<PersistedChatWithMessages | null> {
     return prisma.chat.findUnique({
         where: { id: chatId },
         include: { messages: { orderBy: { createdAt: "asc" } } },
