@@ -7,13 +7,13 @@ import {
     buildTitleFromText,
     createChat,
     ensureChatTitle,
+    listChats,
     saveAssistantMessage,
     saveUserMessage,
 } from "@/server/services/chat.service";
 
 export async function GET() {
     try {
-        const { listChats } = await import("@/server/services/chat.service");
         const chats = await listChats();
 
         return NextResponse.json(
