@@ -10,7 +10,7 @@ The most useful starting point is this guide: it describes the implementation th
 - Saves conversations and messages in PostgreSQL so they can be loaded again later.
 - Uses an `AIProvider` contract and factory so another provider can be added without coupling the UI to a vendor. Gemini is the only provider implemented currently.
 - Limits requests with either a process-local in-memory Map or Redis.
-- Supports stopping a generation and forwards request cancellation through the server to the Gemini SDK.
+- Used streaming responses and `AbortController` to let users stop generation.
 - Runs the application and PostgreSQL in Docker Compose. Redis is supported by the application but is not currently a Compose service.
 
 ## Stack
@@ -39,13 +39,17 @@ Gemini's streaming API yields chunks. `GeminiProvider` encodes those chunks into
 
 The route also collects the streamed text so it can save the assistant message after generation ends. The response includes the created or selected chat ID in `X-Chat-Id`.
 
-### 4. Persist the conversation
+### 4. Let users stop generation
+
+`useChat()` creates an `AbortController` for each request. When the user stops generation or the chat view unmounts, it aborts the browser request; the API forwards that signal to Gemini so ongoing generation can stop too. Tokens already generated cannot be undone, and an intentional stop is not shown as an error.
+
+### 5. Persist the conversation
 
 The chat service owns database operations. A new request creates a chat when no `chatId` is supplied, saves the latest user message, and saves the generated assistant text when the stream finishes. The sidebar loads chat summaries from `GET /api/chat`; `GET /api/chat/[chatId]` returns one conversation and its messages.
 
 PostgreSQL is the durable store; the browser's React state is only the current view of that data. Prisma models are in `prisma/schema.prisma`, migrations are in `prisma/migrations`, and database calls are centralized in `src/server/services/chat.service.ts`.
 
-### 5. Add request limiting: Map first, Redis for shared state
+### 6. Add request limiting: Map first, Redis for shared state
 
 `RATE_LIMIT_STORAGE` selects the limiter implementation. Both are configured for five requests per client identifier in a five-minute window.
 
@@ -56,16 +60,13 @@ PostgreSQL is the durable store; the browser's React state is only the current v
 
 The current Compose file starts the app and PostgreSQL only. If Redis mode is selected in Compose, set `APP_REDIS_URL` to a Redis endpoint reachable from the app container. For local development, `REDIS_URL` must be reachable from the host process. Do not use `localhost` for a Redis service running in a different container; use its Compose service name or network address.
 
-### 6. Handle errors and cancellation
+### 7. Handle errors
 
 - The API rejects an empty message list or more than 50 messages with `400`, and a rate-limited request with `429`.
 - The hook reads JSON error bodies for non-2xx responses and shows the API's message. Unexpected API failures are logged on the server and returned with a generic message so provider internals are not sent to the browser.
 - If a stream fails after it starts, the assistant message is marked with error status and the UI displays an error. The user message has already been persisted; an incomplete assistant reply may not be.
-- Stop and unmount actions abort the browser request. The API forwards its `Request.signal` to Gemini, which can stop upstream generation. An aborted partial reply may be saved if some text was already relayed before the stream closed.
 
-This separation matters: an intentional abort is not presented as an application error, while real failures remain visible and diagnosable.
-
-### 7. Run with Docker Compose
+### 8. Run with Docker Compose
 
 Compose starts PostgreSQL with a persistent named volume and the application image. It waits for PostgreSQL's health check, runs `prisma migrate deploy`, and then starts the Next.js standalone server. The app connects to Postgres through the Compose DNS name `postgres`, not `localhost`.
 
