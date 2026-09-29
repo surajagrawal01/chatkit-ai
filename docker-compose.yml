@@ -50,10 +50,12 @@ services:
 
       DATABASE_URL: ${APP_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/chatkit}
 
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
 
       RATE_LIMIT_STORAGE: ${RATE_LIMIT_STORAGE:-local}
+      REDIS_URL: ${APP_REDIS_URL:-}
 
     ports:
       - "${APP_PORT:-3000}:3000"
