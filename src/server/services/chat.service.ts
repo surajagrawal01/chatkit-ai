@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 
 export type ChatRole = "user" | "assistant" | "system";
 
@@ -23,6 +23,7 @@ export interface PersistedChatWithMessages extends PersistedChat {
 }
 
 export async function listChats(): Promise<PersistedChatWithMessages[]> {
+    const prisma = getPrisma();
     return prisma.chat.findMany({
         where: { deletedAt: null },
         orderBy: { updatedAt: "desc" },
@@ -35,6 +36,7 @@ export async function listChats(): Promise<PersistedChatWithMessages[]> {
 }
 
 export async function getChatById(chatId: string): Promise<PersistedChatWithMessages | null> {
+    const prisma = getPrisma();
     return prisma.chat.findUnique({
         where: { id: chatId },
         include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -48,6 +50,8 @@ export async function getChatMessages(chatId: string) {
 
 export async function createChat(input?: { title?: string; firstMessage?: string }) {
     const firstMessage = input?.firstMessage?.trim();
+
+    const prisma = getPrisma();
 
     const chat = await prisma.chat.create({
         data: {
@@ -79,6 +83,8 @@ export async function saveMessage(chatId: string, role: ChatRole, content: strin
         return null;
     }
 
+    const prisma = getPrisma();
+
     const message = await prisma.message.create({
         data: {
             chatId,
@@ -104,6 +110,8 @@ export async function saveAssistantMessage(chatId: string, content: string) {
 }
 
 export async function ensureChatTitle(chatId: string, fallbackText?: string) {
+
+    const prisma = getPrisma();
     const chat = await prisma.chat.findUnique({
         where: { id: chatId },
         select: { title: true, messages: { orderBy: { createdAt: "asc" }, take: 1 } },
